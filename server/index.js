@@ -42,7 +42,7 @@ function set_balances(callback) {
 	let error = false;
 
 	client.rest.account.getAccount(btc_id).then(result => {
-		btc_balance = result.balance;
+		btc_balance = parseFloat(result.balance);
 
 		get_callback();
 	}).catch(err => {
@@ -50,7 +50,7 @@ function set_balances(callback) {
 	})
 
 	client.rest.account.getAccount(usd_id).then(result => {
-		usd_balance = result.balance;
+		usd_balance = parseFloat(result.balance).toFixed(2);
 
 		get_callback();
 	}).catch(err => {
@@ -93,9 +93,10 @@ app.post('/', (req, res, next) => {
 				type: 'market',
 				side: type,
 				product_id: 'BTC-USD',
-				size: (type === "buy") ? usd_balance : btc_balance
+				size: (type === "sell") ? btc_balance : null,
+				funds: (type === "buy") ? usd_balance : null
 			}).then(response => {
-				const msg = "Ordered a " + type + " order for " + (type === "buy") ? usd_balance : btc_balance;
+				const msg = "Ordered a " + type + " order for " + ((type === "buy") ? usd_balance : btc_balance);
 
 				discord_webhook(msg)
 				console.log(msg);
@@ -104,7 +105,9 @@ app.post('/', (req, res, next) => {
 				console.error(err);
 			})
 		} else {
-			let msg = "Not enough funds to " + type;
+			let msg = "Not enough funds to " + type + ".\n";
+			msg += "BTC Balance: " + btc_balance + "\n";
+			msg += "USD Balance: " + usd_balance;
 
 			discord_webhook(msg);
 			console.log(msg);
