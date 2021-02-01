@@ -103,7 +103,7 @@ app.post('/', (req, res, next) => {
 			client.rest.order.placeOrder(order).then(response => {
 				let msg = "--\n";
 				msg += "Ordered a " + type + " order for " + ((type === "buy") ? usd_balance : btc_balance) + ((type === "buy") ? " $" : " BTC") + "\n";
-				if (type === "buy") msg += "\nCurrent Profit so far: `" + (usd_balance - config.INITIAL_INVESTMENT);
+				if (type === "buy") msg += "\nCurrent Profit so far: `" + (usd_balance - config.INITIAL_INVESTMENT) + "`";
 
 				discord_webhook(msg)
 				console.log(msg);
