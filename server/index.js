@@ -88,14 +88,19 @@ app.post('/', (req, res, next) => {
 		let type = (req.body.direction === 1) ? 'buy' : 'sell';
 
 		if ((type === "buy" && usd_balance > 0) || (type === "sell" && btc_balance > 0)) {
-			client.rest.order.placeOrder({
+			let order = {
 				type: 'market',
 				side: type,
-				product_id: 'BTC-USD',
-				size: (type === "sell") ? btc_balance : null,
-				funds: (type === "buy") ? usd_balance : null
-			}).then(response => {
-				let msg = "--";
+				product_id: 'BTC-USD'
+			}
+
+			if (type === "sell") {
+				order.size = btc_balance;
+			} else {
+				order.funds = usd_balance;
+			}
+			
+			client.rest.order.placeOrder(order).then(response => {
 				let msg = "--\n";
 				msg += "Ordered a " + type + " order for " + ((type === "buy") ? usd_balance : btc_balance) + ((type === "buy") ? " $" : " BTC") + "\n";
 				if (type === "buy") msg += "\nCurrent Profit so far: `" + (usd_balance - config.INITIAL_INVESTMENT);
