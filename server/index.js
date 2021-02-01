@@ -42,7 +42,7 @@ function set_balances(callback) {
 	let error = false;
 
 	client.rest.account.getAccount(btc_id).then(result => {
-		btc_balance = parseFloat(result.balance);
+		btc_balance = result.balance;
 
 		get_callback();
 	}).catch(err => {
@@ -50,7 +50,7 @@ function set_balances(callback) {
 	})
 
 	client.rest.account.getAccount(usd_id).then(result => {
-		usd_balance = parseFloat(result.balance).toFixed(2);
+		usd_balance = Number(result.balance.toString().slice(0, (result.balance.indexOf(".")) + 3));
 
 		get_callback();
 	}).catch(err => {
