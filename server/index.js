@@ -95,11 +95,11 @@ app.post('/', (req, res, next) => {
 			}
 
 			if (type === "sell") {
-				order.size = btc_balance;
+				order.size = btc_balance + "";
 			} else {
-				order.funds = usd_balance;
+				order.funds = usd_balance + "";
 			}
-			
+
 			client.rest.order.placeOrder(order).then(response => {
 				let msg = "--\n";
 				msg += "Ordered a " + type + " order for " + ((type === "buy") ? usd_balance : btc_balance) + ((type === "buy") ? " $" : " BTC") + "\n";
