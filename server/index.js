@@ -96,6 +96,7 @@ app.post('/', (req, res, next) => {
 				funds: (type === "buy") ? usd_balance : null
 			}).then(response => {
 				let msg = "--";
+				let msg = "--\n";
 				msg += "Ordered a " + type + " order for " + ((type === "buy") ? usd_balance : btc_balance) + ((type === "buy") ? " $" : " BTC") + "\n";
 				if (type === "buy") msg += "\nCurrent Profit so far: `" + (usd_balance - config.INITIAL_INVESTMENT);
 
@@ -106,7 +107,7 @@ app.post('/', (req, res, next) => {
 				console.error(err);
 			})
 		} else {
-			let msg = "--";
+			let msg = "--\n";
 			msg += "Not enough funds to " + type + ".\n";
 			msg += "BTC Balance: " + btc_balance + "\n";
 			msg += "USD Balance: " + usd_balance;
