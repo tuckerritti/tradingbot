@@ -96,7 +96,9 @@ app.post('/', (req, res, next) => {
 				size: (type === "sell") ? btc_balance : null,
 				funds: (type === "buy") ? usd_balance : null
 			}).then(response => {
-				const msg = "Ordered a " + type + " order for " + ((type === "buy") ? usd_balance : btc_balance);
+				let msg = "--";
+				msg += "Ordered a " + type + " order for " + ((type === "buy") ? usd_balance : btc_balance) + ((type === "buy") ? " $" : " BTC") + "\n";
+				if (type === "buy") msg += "\nCurrent Profit so far: `" + (usd_balance - config.INITIAL_INVESTMENT);
 
 				discord_webhook(msg)
 				console.log(msg);
@@ -105,7 +107,8 @@ app.post('/', (req, res, next) => {
 				console.error(err);
 			})
 		} else {
-			let msg = "Not enough funds to " + type + ".\n";
+			let msg = "--";
+			msg += "Not enough funds to " + type + ".\n";
 			msg += "BTC Balance: " + btc_balance + "\n";
 			msg += "USD Balance: " + usd_balance;
 

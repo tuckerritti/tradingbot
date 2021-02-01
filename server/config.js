@@ -8,5 +8,6 @@ module.exports = {
 	"API_KEY": process.env.API_KEY,
 	"API_SECRET": process.env.API_SECRET,
 	"PASSPHRASE": process.env.PASSPHRASE,
-	"SANDBOX": process.env.SANDBOX
+	"SANDBOX": process.env.SANDBOX,
+	"INITIAL_INVESTMENT": 2000
 }
