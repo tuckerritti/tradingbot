@@ -75,9 +75,8 @@ function discord_webhook(msg) {
 	})
 }
 
-const validIps = ["52.89.214.238", "34.212.75.30", "54.218.53.128", "52.32.178.7"];
 app.post('/', (req, res, next) => {
-	if (!validIps.includes(req.ip) && config.PRODUCTION) return res.status(401);
+	if (req.body.pass !== "test123") return res.status(401).send("401");
 
 	set_balances(function (err) {
 		if (err) {
