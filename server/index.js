@@ -35,6 +35,7 @@ client.rest.account.listAccounts().then(result => {
 	set_balances(function () {});
 })
 
+// Set balances
 let btc_balance;
 let usd_balance;
 function set_balances(callback) {
@@ -69,15 +70,19 @@ function set_balances(callback) {
 	}
 }
 
+
 function discord_webhook(msg) {
-	axios.post('https://discord.com/api/webhooks/805682700752519178/SxmRyFldwtWcD7tmCktOCya8TUy7ZmnKTprKseP_33dLSNU0biQN44qLP3NCkymf2PhO', {
+	if (!config.DISCORD_WEBHOOK) return;
+
+	axios.post(config.DISCORD_WEBHOOK, {
 		content: msg
 	})
 }
 
 app.post('/', (req, res, next) => {
-	if (req.body.pass !== "test123") return res.status(401).send("401");
+	if (req.body.pass !== config.SHARED_SECRET) return res.status(401).send("401");
 
+	// Set balances of accounts
 	set_balances(function (err) {
 		if (err) {
 			Sentry.captureException(err);
@@ -85,24 +90,29 @@ app.post('/', (req, res, next) => {
 			return;
 		}
 
+		// Set type of order
 		let type = (req.body.direction === 1) ? 'buy' : 'sell';
 
+		// Make sure accounts have enough
 		if ((type === "buy" && usd_balance > 0) || (type === "sell" && btc_balance > 0)) {
+			// Set up order
 			let order = {
 				type: 'market',
 				side: type,
 				product_id: 'BTC-USD'
 			}
 
+			// Add price to order
 			if (type === "sell") {
 				order.size = btc_balance + "";
 			} else {
 				order.funds = usd_balance + "";
 			}
 
+			// Place order
 			client.rest.order.placeOrder(order).then(response => {
 				let msg = "--\n";
-				msg += "Ordered a " + type + " order for " + ((type === "buy") ? usd_balance : btc_balance) + ((type === "buy") ? " $" : " BTC") + "\n";
+				msg += `Placed a ${type} order for ${(type === "buy") ? usd_balance : btc_balance} ${(type === "buy") ? " $" : " BTC"}\n`;
 				if (type === "buy") msg += "\nCurrent Profit so far: `" + (usd_balance - config.INITIAL_INVESTMENT) + "`";
 
 				discord_webhook(msg)
