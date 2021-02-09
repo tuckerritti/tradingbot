@@ -144,7 +144,7 @@ app.post('/', (req, res, next) => {
 				msg += "--\n";
 				msg += "Placed a " + type + " order for `" + truncate8((type === "buy") ? usd_balance / btc_price : btc_balance) + " BTC` at `" + truncate2(btc_price) + "`\n";
 				if (type === "buy" ) msg += "\n";
-				if (type === "buy" ) msg += "Current profit so far: `" + truncate2(usd_balance - (config.INITIAL_INVESTMENT * 0.01)) + "`";
+				if (type === "buy" ) msg += "Current profit so far: `" + truncate2(usd_balance - (config.INITIAL_INVESTMENT * 1.01)) + "`";
 
 				discord_webhook(msg);
 				console.log(msg);
