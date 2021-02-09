@@ -3,71 +3,90 @@ const http = require('http');
 const axios = require('axios');
 const express = require('express');
 const Sentry = require('@sentry/node')
-const {CoinbasePro} = require('coinbase-pro-node');
 const bodyParser = require("body-parser");
+const otpauth = require('otpauth');
+const {v4: uuid} = require('uuid');
+
+const robinhood = require('algotrader').Robinhood;
+const User = robinhood.User;
 
 const config = require('./config');
 
 // Set up express
 const app = express();
 
-// Set up coinbase pro
-const client = new CoinbasePro({
-	apiKey: config.API_KEY,
-	apiSecret: config.API_SECRET,
-	passphrase: config.PASSPHRASE,
-	useSandbox: true
-});
-
 // Initialize Sentry
 if (config.PRODUCTION) Sentry.init({dsn: config.SENTRY_DSN});
+
+let totp = new otpauth.TOTP({
+	issuer: 'Robinhood',
+	label: 'Robinhood',
+	algorithm: 'SHA1',
+	digits: 6,
+	period: 30,
+	secret: config.OTP_CODE
+});
+
+const myUser = new User(config.USERNAME, config.PASSWORD, config.DEVICE_TOKEN, {
+	doNotSaveToDisk: true,
+	serializedUserFile: null
+});
+
+function getMFA() {
+	return new Promise((resolve, reject) => {
+		resolve(totp.generate());
+	})
+}
+
+function authenticate(callback) {
+	myUser.authenticate(config.PASSWORD, getMFA).then(() => {
+		callback(null);
+	}).catch(err => {
+		callback(err);
+	})
+}
+
+authenticate(function (err) {
+	if (err) {
+		console.error(err);
+		process.exit(1)
+	}
+})
+
+function truncate6(string) {
+	return string.toString().match(/^-?\d+(?:\.\d{0,6})?/)[0]
+}
+
+function truncate2(string) {
+	return string.toString().match(/^-?\d+(?:\.\d{0,2})?/)[0]
+}
 
 // Initialize bodyParser
 app.use(bodyParser.json());
 
-// Set ids
-let btc_id;
-let usd_id;
-client.rest.account.listAccounts().then(result => {
-	btc_id = result.find(e => e.currency === "BTC").id;
-	usd_id = result.find(e => e.currency === "USD").id;
-
-	set_balances(function () {});
-})
-
-// Set balances
-let btc_balance;
-let usd_balance;
 function set_balances(callback) {
-	let count = 0;
-	let error = false;
+	myUser.getBalances().then(result => { // Get buying power
 
-	client.rest.account.getAccount(btc_id).then(result => {
-		btc_balance = result.balance;
+		axios.get("https://nummus.robinhood.com/holdings/", {
+			headers: {
+				"Authorization": "Bearer " + myUser.getAuthToken()
+			}
+		}).then(holdings => {
+			const btc_balance = holdings.data.results.find(e => e.currency.code === "BTC").quantity;
 
-		get_callback();
-	}).catch(err => {
-		get_callback(err);
-	})
-
-	client.rest.account.getAccount(usd_id).then(result => {
-		usd_balance = Number(result.balance.toString().slice(0, (result.balance.indexOf(".")) + 3));
-
-		get_callback();
-	}).catch(err => {
-		get_callback(err)
-	})
-
-	function get_callback(err) {
-		count++;
-
-		if (!error && err) {
-			error = true;
+			axios.get("https://api.robinhood.com/marketdata/forex/quotes/BTCUSD/", {
+				headers: {
+					"Authorization": "Bearer " + myUser.getAuthToken()
+				}
+			}).then(price => {
+				callback(null, result.buyingPower, btc_balance, price.data.mark_price);
+			})
+		}).catch(err => {
 			callback(err);
-		} else if (!error && count === 2) {
-			callback(null)
-		}
-	}
+		})
+	}).catch(err => {
+		callback(err);
+	})
 }
 
 
@@ -83,7 +102,7 @@ app.post('/', (req, res, next) => {
 	if (req.body.pass !== config.SHARED_SECRET) return res.status(401).send("401");
 
 	// Set balances of accounts
-	set_balances(function (err) {
+	set_balances(function (err, usd_balance, btc_balance, btc_price) {
 		if (err) {
 			Sentry.captureException(err);
 			console.error(err);
@@ -93,39 +112,47 @@ app.post('/', (req, res, next) => {
 		// Set type of order
 		let type = (req.body.direction === 1) ? 'buy' : 'sell';
 
+		console.log(usd_balance);
+		console.log(btc_balance);
+
 		// Make sure accounts have enough
-		if ((type === "buy" && usd_balance > 0) || (type === "sell" && btc_balance > 0)) {
-			// Set up order
-			let order = {
-				type: 'market',
+		if ((type === "buy" && truncate2(usd_balance) > 3) || (type === "sell" && truncate6(btc_balance) > 0)) {
+			let data = {
+				price: truncate2(btc_price),
+				type: "market",
+				time_in_force: "gtc",
+				quantity: truncate6((type === "buy") ? usd_balance / btc_price : btc_balance),
 				side: type,
-				product_id: 'BTC-USD'
-			}
+				currency_pair_id: "3d961844-d360-45fc-989b-f6fca761d511",
+				ref_id: uuid()
+			};
 
-			// Add price to order
-			if (type === "sell") {
-				order.size = btc_balance + "";
-			} else {
-				order.funds = usd_balance + "";
-			}
+			console.log(data);
 
-			// Place order
-			client.rest.order.placeOrder(order).then(response => {
-				let msg = "--\n";
-				msg += `Placed a ${type} order for ${(type === "buy") ? usd_balance : btc_balance} ${(type === "buy") ? " $" : " BTC"}\n`;
-				if (type === "buy") msg += "\nCurrent Profit so far: `" + (usd_balance - config.INITIAL_INVESTMENT) + "`";
+			axios.post("https://nummus.robinhood.com/orders/", JSON.stringify(data), {
+				headers: {
+					"Authorization": "Bearer " + myUser.getAuthToken(),
+					"Content-Type": "application/json"
+				}
+			}).then(() => {
+				let msg = "";
+				msg += "--\n";
+				msg += "Placed a " + type + " order for `" + truncate6((type === "buy") ? usd_balance / btc_price : btc_balance) + " BTC`\n";
+				if (type === "buy" ) msg += "\n";
+				if (type === "buy" ) msg += "Current profit so far: `" + truncate2(usd_balance - config.INITIAL_INVESTMENT) + "`";
 
-				discord_webhook(msg)
+				discord_webhook(msg);
 				console.log(msg);
 			}).catch(err => {
 				Sentry.captureException(err);
 				console.error(err);
 			})
 		} else {
-			let msg = "--\n";
+			let msg = "";
+			msg += "--\n";
 			msg += "Not enough funds to " + type + ".\n";
-			msg += "BTC Balance: " + btc_balance + "\n";
-			msg += "USD Balance: " + usd_balance;
+			msg += "USD Balance: `" + truncate2(usd_balance) + "`.\n";
+			msg += "BTC Balance: `" + truncate6(btc_balance) + "`.";
 
 			discord_webhook(msg);
 			console.log(msg);
