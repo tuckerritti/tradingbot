@@ -53,8 +53,8 @@ authenticate(function (err) {
 	}
 })
 
-function truncate6(string) {
-	return string.toString().match(/^-?\d+(?:\.\d{0,6})?/)[0]
+function truncate8(string) {
+	return string.toString().match(/^-?\d+(?:\.\d{0,8})?/)[0]
 }
 
 function truncate2(string) {
@@ -113,7 +113,7 @@ app.post('/', (req, res, next) => {
 		let type = (req.body.direction === 1) ? 'buy' : 'sell';
 
 		// Make sure accounts have enough
-		if ((type === "buy" && truncate2(usd_balance) > 3) || (type === "sell" && truncate6(btc_balance) > 0)) {
+		if ((type === "buy" && truncate2(usd_balance) > (config.INITIAL_INVESTMENT * 0.01)) || (type === "sell" && truncate8(btc_balance) > 0)) {
 			let quantity;
 
 			if (type === "buy") {
@@ -128,7 +128,7 @@ app.post('/', (req, res, next) => {
 				price: truncate2((type === "buy") ? btc_price * 1.01 : btc_price * 0.95),
 				type: "market",
 				time_in_force: "gtc",
-				quantity: truncate6(quantity),
+				quantity: truncate8(quantity),
 				side: type,
 				currency_pair_id: "3d961844-d360-45fc-989b-f6fca761d511",
 				ref_id: uuid()
@@ -142,7 +142,7 @@ app.post('/', (req, res, next) => {
 			}).then(() => {
 				let msg = "";
 				msg += "--\n";
-				msg += "Placed a " + type + " order for `" + truncate6((type === "buy") ? usd_balance / btc_price : btc_balance) + " BTC` at `" + truncate2(btc_price) + "`\n";
+				msg += "Placed a " + type + " order for `" + truncate8((type === "buy") ? usd_balance / btc_price : btc_balance) + " BTC` at `" + truncate2(btc_price) + "`\n";
 				if (type === "buy" ) msg += "\n";
 				if (type === "buy" ) msg += "Current profit so far: `" + truncate2(usd_balance - config.INITIAL_INVESTMENT) + "`";
 
@@ -157,7 +157,7 @@ app.post('/', (req, res, next) => {
 			msg += "--\n";
 			msg += "Not enough funds to " + type + ".\n";
 			msg += "USD Balance: `" + truncate2(usd_balance) + "`.\n";
-			msg += "BTC Balance: `" + truncate6(btc_balance) + "`.";
+			msg += "BTC Balance: `" + truncate8(btc_balance) + "`.";
 
 			discord_webhook(msg);
 			console.log(msg);
