@@ -114,11 +114,21 @@ app.post('/', (req, res, next) => {
 
 		// Make sure accounts have enough
 		if ((type === "buy" && truncate2(usd_balance) > 3) || (type === "sell" && truncate6(btc_balance) > 0)) {
+			let quantity;
+
+			if (type === "buy") {
+				let calculated_btc_price = btc_price * 1.01;
+
+				quantity = usd_balance / calculated_btc_price;
+			} else {
+				quantity = btc_balance;
+			}
+
 			let data = {
 				price: truncate2((type === "buy") ? btc_price * 1.01 : btc_price * 0.95),
 				type: "market",
 				time_in_force: "gtc",
-				quantity: truncate6((type === "buy") ? usd_balance / btc_price : btc_balance),
+				quantity: truncate6(quantity),
 				side: type,
 				currency_pair_id: "3d961844-d360-45fc-989b-f6fca761d511",
 				ref_id: uuid()
