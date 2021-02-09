@@ -112,13 +112,10 @@ app.post('/', (req, res, next) => {
 		// Set type of order
 		let type = (req.body.direction === 1) ? 'buy' : 'sell';
 
-		console.log(usd_balance);
-		console.log(btc_balance);
-
 		// Make sure accounts have enough
 		if ((type === "buy" && truncate2(usd_balance) > 3) || (type === "sell" && truncate6(btc_balance) > 0)) {
 			let data = {
-				price: truncate2(btc_price),
+				price: truncate2((type === "buy") ? btc_price * 1.01 : btc_price * 0.95),
 				type: "market",
 				time_in_force: "gtc",
 				quantity: truncate6((type === "buy") ? usd_balance / btc_price : btc_balance),
@@ -126,8 +123,6 @@ app.post('/', (req, res, next) => {
 				currency_pair_id: "3d961844-d360-45fc-989b-f6fca761d511",
 				ref_id: uuid()
 			};
-
-			console.log(data);
 
 			axios.post("https://nummus.robinhood.com/orders/", JSON.stringify(data), {
 				headers: {
@@ -137,7 +132,7 @@ app.post('/', (req, res, next) => {
 			}).then(() => {
 				let msg = "";
 				msg += "--\n";
-				msg += "Placed a " + type + " order for `" + truncate6((type === "buy") ? usd_balance / btc_price : btc_balance) + " BTC`\n";
+				msg += "Placed a " + type + " order for `" + truncate6((type === "buy") ? usd_balance / btc_price : btc_balance) + " BTC` at `" + truncate2(btc_price) + "`\n";
 				if (type === "buy" ) msg += "\n";
 				if (type === "buy" ) msg += "Current profit so far: `" + truncate2(usd_balance - config.INITIAL_INVESTMENT) + "`";
 
