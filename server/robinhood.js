@@ -101,10 +101,12 @@ exports.handleSignal = function (type, callback) {
 	get_balances(function (err, usd_balance, btc_balance, btc_price) {
 		if (err) return callback(err);
 
+		const total_balance = (btc_balance * btc_price) + usd_balance;
+
 		let enough_balance = false;
 
 		// On buy order, buy all except for buffer
-		if (type === "buy" && (usd_balance > (usd_balance * 0.01))) enough_balance = true;
+		if (type === "buy" && (usd_balance > (total_balance * 0.01))) enough_balance = true;
 
 		// On sell order, sell all bitcoin
 		if (type === "sell" && lib.truncate8(btc_balance) > 0) enough_balance = true;
