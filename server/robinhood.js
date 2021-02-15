@@ -5,7 +5,7 @@ const User = require('algotrader').Robinhood.User;
 const lib = require('./lib');
 const config = require('./config');
 
-function discord_webhook(type, quantity, btc_balance, usd_balance) {
+function discord_webhook(type, quantity, btc_balance, usd_balance, btc_price, btc_buffer) {
 	if (!config.ROBINHOOD_DISCORD_WEBHOOK) return;
 
 	const currency = (type === "buy") ? "USD" : "BTC";
@@ -14,6 +14,8 @@ function discord_webhook(type, quantity, btc_balance, usd_balance) {
 	msg += "--\n";
 	msg += `Placed a ${type} order for ${quantity} ${currency}\n`;
 	msg += "\n";
+	msg += `BTC Price: ${btc_price}\n`;
+	msg += `BTC Buffer Price: ${btc_buffer}\n`;
 	msg += `BTC Balance: ${btc_balance}\n`;
 	msg += `USD Balance: ${usd_balance}\n`;
 
@@ -140,7 +142,7 @@ exports.handleSignal = function (type, callback) {
 		create_order(order, function (err) {
 			if (err) return callback(err);
 
-			discord_webhook(type, order.quantity, btc_balance, usd_balance);
+			discord_webhook(type, order.quantity, btc_balance, usd_balance, btc_price, order.price);
 			callback(null);
 		})
 	})

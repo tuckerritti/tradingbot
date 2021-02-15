@@ -25,7 +25,7 @@ Simulated.findOne({}, function (err, balances) {
 	})
 })
 
-function discord_webhook(type, quantity, btc_balance, usd_balance) {
+function discord_webhook(type, quantity, btc_balance, usd_balance, btc_price) {
 	if (!config.SIMULATED_DISCORD_WEBHOOK) return;
 
 	const currency = (type === "buy") ? "BTC" : "USD";
@@ -34,6 +34,7 @@ function discord_webhook(type, quantity, btc_balance, usd_balance) {
 	msg += "--\n";
 	msg += `Placed a ${type} order for ${quantity} ${currency}\n`;
 	msg += "\n";
+	msg += `BTC Price: ${btc_price}\n`;
 	msg += `BTC Balance: ${btc_balance}\n`;
 	msg += `USD Balance: ${usd_balance}\n`;
 
@@ -69,7 +70,7 @@ exports.handleSignal = function (type, callback) {
 			Simulated.findOneAndUpdate({}, {usd_balance: 0, btc_balance: quantity}, function (err) {
 				if (err) return callback(err);
 
-				discord_webhook(type, quantity, btc_balance, usd_balance);
+				discord_webhook(type, quantity, btc_balance, usd_balance, btc_price);
 				callback(null);
 			})
 		} else if (type === "sell" && btc_balance > 0) {
@@ -78,7 +79,7 @@ exports.handleSignal = function (type, callback) {
 			Simulated.findOneAndUpdate({}, {usd_balance: quantity, btc_balance: 0}, function (err) {
 				if (err) return callback(err);
 
-				discord_webhook(type, quantity, btc_balance, usd_balance);
+				discord_webhook(type, quantity, btc_balance, usd_balance, btc_price);
 				callback(null);
 			})
 		} else {
