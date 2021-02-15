@@ -145,7 +145,7 @@ exports.handleSignal = function (type, callback) {
 			if (err) return callback(err);
 
 			discord_webhook(type, order.quantity, btc_balance, usd_balance, btc_price, order.price);
-			callback(null);
+			callback(null, btc_price);
 		})
 	})
 }

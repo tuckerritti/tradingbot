@@ -22,25 +22,23 @@ app.post('/', (req, res, next) => {
 
 	let type = (req.body.direction === 1) ? 'buy' : 'sell';
 
-	if (config.ROBINHOOD_ENABLED === "true") {
-		robinhood.handleSignal(type, function (err) {
+		robinhood.handleSignal(type, function (err, btc_price) {
 			if (err) {
 				Sentry.captureException(err);
 				console.error(err);
+				return;
 			}
-		});
-	}
 
-	if (config.SIMULATED_ENABLED === "true") {
-		simulated.handleSignal(type, function (err) {
-			if (err) {
-				Sentry.captureException(err);
-				console.error(err);
-			}
-		});
-	}
+			simulated.handleSignal(type, btc_price, function (err) {
+				if (err) {
+					Sentry.captureException(err);
+					console.error(err);
+					return;
+				}
 
-	res.send("success");
+				res.send("success");
+			});
+		});
 })
 
 const server = http.createServer(app);

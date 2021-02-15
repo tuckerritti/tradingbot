@@ -52,16 +52,12 @@ function get_balances(callback) {
 	Simulated.findOne({}, function (err, balances) {
 		if (err) return callback(err);
 
-		axios.get('https://api.coinbase.com/v2/prices/spot?currency=USD').then(result => {
-			callback(null, balances.usd_balance, balances.btc_balance, result.data.data.amount);
-		}).catch(err => {
-			callback(err);
-		})
+		callback(null, balances.usd_balance, balances.btc_balance);
 	})
 }
 
-exports.handleSignal = function (type, callback) {
-	get_balances(function (err, usd_balance, btc_balance, btc_price) {
+exports.handleSignal = function (type, btc_price, callback) {
+	get_balances(function (err, usd_balance, btc_balance) {
 		if (err) return callback(err);
 
 		if (type === "buy" && usd_balance > 0) {
