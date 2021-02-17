@@ -4,8 +4,7 @@ const express = require('express');
 const Sentry = require('@sentry/node')
 const bodyParser = require("body-parser");
 
-const robinhood = require('./robinhood');
-const simulated = require('./simulated');
+const coinbase = require('./coinbase');
 const config = require('./config');
 
 // Set up express
@@ -22,23 +21,23 @@ app.post('/', (req, res, next) => {
 
 	let type = (req.body.direction === 1) ? 'buy' : 'sell';
 
-		robinhood.handleSignal(type, function (err, btc_price) {
-			if (err) {
-				Sentry.captureException(err);
+	coinbase.handleSignal(type, function (err) {
+		if (err) {
+			if (err.response?.status === 400) {
+				const error = JSON.stringify(err.response.data);
+
+				console.error(error);
+				Sentry.captureException(error);
+				return;
+			} else {
 				console.error(err);
+				Sentry.captureException(err);
 				return;
 			}
+		}
 
-			simulated.handleSignal(type, btc_price, function (err) {
-				if (err) {
-					Sentry.captureException(err);
-					console.error(err);
-					return;
-				}
-
-				res.send("success");
-			});
-		});
+		res.send("success");
+	})
 })
 
 const server = http.createServer(app);
