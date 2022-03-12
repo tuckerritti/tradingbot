@@ -1,4 +1,25 @@
-const config = require('./config');
+
+const otpauth = require("otpauth");
+
+const config = require("./config");
+
+/**
+ * Get OTP code for robinhood
+ *
+ * @returns {number} OTP Code
+ */
+exports.getOTPCode = function () {
+	let totp = new otpauth.TOTP({
+		issuer: "Robinhood",
+		label: "Robinhood",
+		algorithm: "SHA1",
+		digits: 6,
+		period: 30,
+		secret: config.OTP_CODE
+	});
+
+	return totp.generate();
+}
 
 /**
  * Truncate a decimal to 2 places
